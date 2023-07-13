@@ -21,8 +21,11 @@ def search_links_lch(response):
             Roudmap:{response}
             Answer: max_tokens=200"""
     )
+    # query = agent.run(response)
     print("LINKS CREATED")
     print(query)
     return query
+    
 
 
+# print(search_links_lch("in which team playing ronaldo"))
