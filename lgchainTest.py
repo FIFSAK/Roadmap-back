@@ -1,9 +1,9 @@
 from langchain.agents import AgentType, initialize_agent, load_tools
 from langchain.llms import OpenAI
 import os
-import dotenv
+# import dotenv
 
-dotenv.load_dotenv(dotenv.find_dotenv())
+# dotenv.load_dotenv(dotenv.find_dotenv())
 
 llm = OpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
 
