@@ -2,12 +2,14 @@ import os
 import openai
 import logging
 import dotenv
+# from decouple import config
 
+# Get environment variables
+# openai.api_key = config('OPENAI_API_KEY')
 dotenv.load_dotenv(dotenv.find_dotenv())
 
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
