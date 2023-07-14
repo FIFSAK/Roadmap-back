@@ -11,14 +11,9 @@ from fastapi.responses import StreamingResponse
 from pymongo.mongo_client import MongoClient
 import os
 import dotenv
-# from decouple import config
-
-# dotenv.load_dotenv(dotenv.find_dotenv())
-
 
 
 password = os.getenv("PASSWORD_MONGODB")
-# password = config("PASSWORD_MONGODB")
 
 uri = f"mongodb+srv://anuar200572:{password}@cluster0.plqvoke.mongodb.net/?retryWrites=true&w=majority"
 
