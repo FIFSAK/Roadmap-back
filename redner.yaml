@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: fastapi
+    runtime: docker
+    plan: free
+    repo: https://github.com/FIFSAK/Roadmap-back.git
+    region: frankfurt
+    branch: main
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SERPAPI_API_KEY
+        sync: false
+      - key: PASSWORD_MONGODB
+        sync: false
