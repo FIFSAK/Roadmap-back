@@ -10,11 +10,11 @@ from lgchainTest import search_links_lch
 from fastapi.responses import StreamingResponse
 from pymongo.mongo_client import MongoClient
 import os
-# import dotenv
+import dotenv
 
 
 
-# dotenv.load_dotenv(dotenv.find_dotenv())
+dotenv.load_dotenv(dotenv.find_dotenv())
 
 
 
