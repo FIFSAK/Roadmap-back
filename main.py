@@ -12,6 +12,7 @@ from pymongo.mongo_client import MongoClient
 import os
 import dotenv
 
+dotenv.load_dotenv(dotenv.find_dotenv())
 
 password = os.getenv("PASSWORD_MONGODB")
 
