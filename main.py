@@ -131,15 +131,15 @@ async def delete_user_roadmap(email: str, index: int):
     else:
         return {"message": "User not found"}
     
-class Answers(BaseModel):
-    answers: List[str]
+# class Answers(BaseModel):
+#     answers: List[str]
     
-@app.post("/receive_answers")
-async def receive_answers(answers: Answers):
-    for answer in answers.answers:
-        print(answer)
+# @app.post("/receive_answers")
+# async def receive_answers(answers: Answers):
+#     for answer in answers.answers:
+#         print(answer)
 
-    return {"message": "Answers received successfully"}
+#     return {"message": "Answers received successfully"}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True, workers=3)
