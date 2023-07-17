@@ -112,7 +112,24 @@ async def get_user_roadmaps(email: str):
         return {"roadmaps": user['roadmaps']}
     else:
         return {"error": "User not found"}
+    
 
+@app.delete("/delete_roadmap")
+async def delete_user_roadmap(email: str, index: int):
+    user = user_collection.find_one({"email": email})
+    if user is not None:
+        roadmaps = user.get("roadmaps", [])
+        if 0 <= index < len(roadmaps):
+            roadmaps.pop(index)
+            result = user_collection.update_one({"email": email}, {"$set": {"roadmaps": roadmaps}})
+            if result.modified_count > 0:
+                return {"message": "Roadmap deleted successfully"}
+            else:
+                return {"message": "Failed to delete roadmap"}
+        else:
+            return {"message": "Invalid roadmap index"}
+    else:
+        return {"message": "User not found"}
 
 
 if __name__ == "__main__":
