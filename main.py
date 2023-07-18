@@ -3,16 +3,25 @@ from typing import Optional, List
 from pydantic import BaseModel
 from textwrap import dedent
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from gpt_req import make_request
+from gpt_req import make_request, openai_call
 from lgchainTest import search_links_lch
 from fastapi.responses import StreamingResponse
 from pymongo.mongo_client import MongoClient
 import os
 import dotenv
+import logging
+import openai
 
 dotenv.load_dotenv(dotenv.find_dotenv())
+
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Configure logging
+
+logging.basicConfig(level=logging.INFO)
 
 password = os.getenv("PASSWORD_MONGODB")
 
@@ -162,6 +171,26 @@ async def receive_answers(answers: Answers):
             )
     print(response)
     return {"message": response}
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    print(websocket)
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        
+        report = []
+        for resp in openai.Completion.create(
+            model='text-davinci-003',
+            prompt=data,
+            max_tokens=120, 
+            temperature=0.5,
+            stream=True):
+            report.append(resp.choices[0].text)
+            result = "".join(report).strip()
+            result = result.replace("\n", "")
+            print(result)
+            await websocket.send_text(result)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True, workers=3)

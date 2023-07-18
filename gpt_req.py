@@ -1,7 +1,7 @@
 import os
-import openai
 import logging
 import dotenv
+import openai
 
 dotenv.load_dotenv(dotenv.find_dotenv())
 
@@ -26,3 +26,11 @@ def make_request(message, prompt, max_tokens = None):
 
     return response['choices'][0]['message']['content']
 
+async def openai_call(prompt):
+    response = openai.Completion.create(
+        engine="text-davinci-003",
+        prompt=prompt,
+        max_tokens=120,
+        temperature=0.5
+    )
+    return response.choices[0].text.strip()
