@@ -192,6 +192,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     """},
                 {"role": "user", "content": f'{data}'},
             ],
+            max_tokens = 100,
             temperature=0.5,
             stream=True
         ):
@@ -199,7 +200,14 @@ async def websocket_endpoint(websocket: WebSocket):
             result = "".join(report).strip()
             # result = result.replace("\n", "")
             print(result)
-            await websocket.send_text(result)
+            await websocket.send_text(result)   
+        future_links = search_links_lch(result)
+        links = future_links
+        await websocket.send_text(result + links)   
+        # await websocket.send_text(links)
+        # links = search_links_lch(result)
+        # print(links)
+        # return links
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True, workers=3)
