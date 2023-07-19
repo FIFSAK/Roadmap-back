@@ -192,7 +192,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     """},
                 {"role": "user", "content": f'{data}'},
             ],
-            max_tokens=120, 
             temperature=0.5,
             stream=True
         ):
