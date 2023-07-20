@@ -209,5 +209,20 @@ async def websocket_endpoint(websocket: WebSocket):
         # print(links)
         # return links
 
+@app.post("/user_email")
+async def get_user_roadmaps(email: Email):
+    global user_email
+    try:
+        user_email = email
+        print(user_email,"++++++++++++")
+    except:
+        pass
+
+@app.post("/send_user_email")
+async def send_user_email():
+    global user_email
+    print(user_email, '--------------------')
+    return user_email
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True, workers=3)
