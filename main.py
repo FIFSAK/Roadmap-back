@@ -3,7 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 from textwrap import dedent
 import uvicorn
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Body, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from gpt_req import make_request, openai_call
 from lgchainTest import search_links_lch
@@ -13,6 +13,9 @@ import os
 import dotenv
 import logging
 import openai
+from model import UserLogintSchema
+from auth.jwt_handler import signJWT
+from auth.jwt_bearer import JWTBearer
 
 dotenv.load_dotenv(dotenv.find_dotenv())
 
@@ -31,6 +34,8 @@ uri = f"mongodb+srv://anuar200572:{password}@cluster0.plqvoke.mongodb.net/?retry
 client = MongoClient(uri)
 db = client['RoadMaps']
 user_collection = db['users']
+
+users = []
 
 
 
@@ -113,7 +118,7 @@ async def save_roadmap(roadmap: Roadmap, email: Email):
 
 
 
-@app.get("/user_roadmaps")
+@app.get("/user_roadmaps", dependencies=[Depends(JWTBearer())])
 async def get_user_roadmaps(email: str):
     print(email,"++++++++++++")
     user = user_collection.find_one({"email": email})
@@ -209,20 +214,41 @@ async def websocket_endpoint(websocket: WebSocket):
         # print(links)
         # return links
 
-@app.post("/user_email")
-async def get_user_roadmaps(email: Email):
-    global user_email
-    try:
-        user_email = email
-        print(user_email,"++++++++++++")
-    except:
-        pass
+# @app.post("/user_email")
+# async def get_user_roadmaps(email: Email):
+#     global user_email
+#     try:
+#         user_email = email
+#         print(user_email,"++++++++++++")
+#     except:
+#         pass
 
-@app.post("/send_user_email")
-async def send_user_email():
-    global user_email
-    print(user_email, '--------------------')
-    return user_email
+# @app.post("/send_user_email")
+# async def send_user_email():
+#     global user_email
+#     print(user_email, '--------------------')
+#     return user_email
+
+
+
+@app.post('/user/signup', tags=['user'])
+def user_signup(user: UserLogintSchema = Body(default = None)):
+    users.append(user)
+    return signJWT(user.email)
+
+@app.post('/user/login', tags=['user'])
+def user_login(user: UserLogintSchema = Body(default = None)):
+    if user in users:
+        return  signJWT(user.email)
+    else:
+        return {
+            "error" : "Invalid login details"
+        }
+
+@app.post('/user/all_user', tags = ['user'])
+def all_user():
+    return users
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True, workers=3)
