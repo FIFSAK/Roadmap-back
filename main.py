@@ -14,8 +14,9 @@ import dotenv
 import logging
 import openai
 from model import UserLogintSchema
-from auth.jwt_handler import signJWT
+from auth.jwt_handler import signJWT, get_current_user_email
 from auth.jwt_bearer import JWTBearer
+import re
 
 dotenv.load_dotenv(dotenv.find_dotenv())
 
@@ -35,7 +36,6 @@ client = MongoClient(uri)
 db = client['RoadMaps']
 user_collection = db['users']
 
-users = []
 
 
 
@@ -62,7 +62,7 @@ class Message(BaseModel):
     message: str
 
 
-@app.post("/roadmap_create")
+@app.post("/roadmap_create", dependencies=[Depends(JWTBearer())])
 def create_rm(message: Message):
     request = message.message
     print("ROADMAP CREATION MESSAGE")
@@ -102,15 +102,14 @@ class Email(BaseModel):
 class Roadmap(BaseModel):
     roadmap: str
 
-@app.post("/save_roadmap")
-async def save_roadmap(roadmap: Roadmap, email: Email):
-    existing_user = user_collection.find_one({"email": email.email})
+@app.post("/save_roadmap", dependencies=[Depends(JWTBearer())])
+async def save_roadmap(roadmap: Roadmap, email: str = Depends(get_current_user_email)):
+    existing_user = user_collection.find_one({"email": email})
     if existing_user is not None:
-        result = user_collection.update_one({"email": email.email}, {"$push": {"roadmaps": roadmap.roadmap}})
-        print("Roadmap added to user with email ", email.email)
+        result = user_collection.update_one({"email": email}, {"$push": {"roadmaps": roadmap.roadmap}})
     else:
         user_document = {
-            "email": email.email,
+            "email": email,
             "roadmaps": [roadmap.roadmap]
         }
         result = user_collection.insert_one(user_document)
@@ -119,8 +118,7 @@ async def save_roadmap(roadmap: Roadmap, email: Email):
 
 
 @app.get("/user_roadmaps", dependencies=[Depends(JWTBearer())])
-async def get_user_roadmaps(email: str):
-    print(email,"++++++++++++")
+async def get_user_roadmaps(email: str = Depends(get_current_user_email)):
     user = user_collection.find_one({"email": email})
     if user is not None:
         return {"roadmaps": user['roadmaps']}
@@ -128,8 +126,8 @@ async def get_user_roadmaps(email: str):
         return {"error": "User not found"}
     
 
-@app.delete("/delete_roadmap")
-async def delete_user_roadmap(email: str, index: int):
+@app.delete("/delete_roadmap", dependencies=[Depends(JWTBearer())])
+async def delete_user_roadmap(index: int, email: str = Depends(get_current_user_email)):
     user = user_collection.find_one({"email": email})
     if user is not None:
         roadmaps = user.get("roadmaps", [])
@@ -148,7 +146,7 @@ async def delete_user_roadmap(email: str, index: int):
 class Answers(BaseModel):
     answers: List[str]
     
-@app.post("/receive_answers")
+@app.post("/receive_answers", dependencies=[Depends(JWTBearer())])
 async def receive_answers(answers: Answers):
     response = make_request(
                 f"""Do you enjoy solving complex mathematical problems? ({answers.answers[0]})\n- 
@@ -177,7 +175,7 @@ async def receive_answers(answers: Answers):
     print(response)
     return {"message": response}
 
-@app.websocket("/ws")
+@app.websocket("/ws", dependencies=[Depends(JWTBearer())])
 async def websocket_endpoint(websocket: WebSocket):
     print(websocket)
     await websocket.accept()
@@ -197,7 +195,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     """},
                 {"role": "user", "content": f'{data}'},
             ],
-            max_tokens = 100,
+            max_tokens=120,
             temperature=0.5,
             stream=True
         ):
@@ -209,45 +207,47 @@ async def websocket_endpoint(websocket: WebSocket):
         future_links = search_links_lch(result)
         links = future_links
         await websocket.send_text(result + links)   
-        # await websocket.send_text(links)
-        # links = search_links_lch(result)
-        # print(links)
-        # return links
 
-# @app.post("/user_email")
-# async def get_user_roadmaps(email: Email):
-#     global user_email
-#     try:
-#         user_email = email
-#         print(user_email,"++++++++++++")
-#     except:
-#         pass
-
-# @app.post("/send_user_email")
-# async def send_user_email():
-#     global user_email
-#     print(user_email, '--------------------')
-#     return user_email
 
 
 
 @app.post('/user/signup', tags=['user'])
 def user_signup(user: UserLogintSchema = Body(default = None)):
-    users.append(user)
-    return signJWT(user.email)
+    regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+
+    if(re.fullmatch(regex, user.email)):
+        existing_user = user_collection.find_one({"email": user.email})
+
+        if existing_user is not None:
+            return {
+                "error" : "User with this email address already exists"
+            }
+        else:
+            user_document = {
+                "email": user.email,
+                "roadmaps": [],
+                "password": user.password,
+            }
+            user_collection.insert_one(user_document)
+            return signJWT(user.email)
+    else:
+        return {
+            "error" : "Invalid email"
+        }
+    
+ 
+    
 
 @app.post('/user/login', tags=['user'])
 def user_login(user: UserLogintSchema = Body(default = None)):
-    if user in users:
-        return  signJWT(user.email)
-    else:
-        return {
-            "error" : "Invalid login details"
-        }
+    existing_user = user_collection.find_one({"email": user.email})
 
-@app.post('/user/all_user', tags = ['user'])
-def all_user():
-    return users
+    if existing_user is None:
+         return {
+                "error" : "User with this email not found"
+            }
+    elif existing_user['password'] == user.password:
+        return signJWT(user.email)
 
 
 if __name__ == "__main__":
