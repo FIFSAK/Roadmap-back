@@ -251,6 +251,10 @@ def user_login(user: UserLogintSchema = Body(default = None)):
             }
     elif existing_user['password'] == user.password:
         return signJWT(user.email)
+    elif existing_user['password'] != user.password:
+        return{
+            "error" : "Wrong password"
+        }
 
 
 if __name__ == "__main__":
