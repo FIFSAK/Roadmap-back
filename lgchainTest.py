@@ -18,7 +18,7 @@ llm = OpenAI(temperature=0)
 def search_links_lch(response):
     query = llm.predict(
         f"""
-            Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap
+            Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
             Roudmap:{response}
             Answer: max_tokens=unlimited"""
     )
