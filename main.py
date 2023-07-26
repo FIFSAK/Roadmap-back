@@ -208,6 +208,7 @@ async def websocket_endpoint(websocket: WebSocket):
             # result = result.replace("\n", "")
             print(result)
             await websocket.send_text(result)   
+        await websocket.send_text(result + "wait a few seconds i'll provid resources for learning material")   
         future_links = search_links_lch(result)
         links = future_links
         await websocket.send_text(result + links)   
