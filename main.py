@@ -17,6 +17,7 @@ from model import UserLogintSchema
 from auth.jwt_handler import signJWT, get_current_user_email
 from auth.jwt_bearer import JWTBearer
 import re
+import datetime
 
 dotenv.load_dotenv(dotenv.find_dotenv())
 
@@ -103,19 +104,23 @@ class Email(BaseModel):
 class Roadmap(BaseModel):
     roadmap: str
 
+
 @app.post("/save_roadmap", dependencies=[Depends(JWTBearer())])
 async def save_roadmap(roadmap: Roadmap, email: str = Depends(get_current_user_email)):
     existing_user = user_collection.find_one({"email": email})
+    roadmap_with_timestamp = {
+        "roadmap": roadmap.roadmap,
+        "created_at": str(datetime.date.today())
+    }
     if existing_user is not None:
-        result = user_collection.update_one({"email": email}, {"$push": {"roadmaps": roadmap.roadmap}})
+        result = user_collection.update_one({"email": email}, {"$push": {"roadmaps": roadmap_with_timestamp}})
     else:
         user_document = {
             "email": email,
-            "roadmaps": [roadmap.roadmap]
+            "roadmaps": [roadmap_with_timestamp]
         }
         result = user_collection.insert_one(user_document)
         print("User inserted with id ", result.inserted_id, " and roadmap")
-
 
 
 @app.get("/user_roadmaps", dependencies=[Depends(JWTBearer())])
