@@ -20,7 +20,7 @@ def search_links_lch(response):
         f"""
             Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
             Roudmap:{response}
-            Answer: max_tokens=unlimited"""
+            Answer: max_tokens=1000"""
     )
     # query = agent.run(response)
     print("LINKS CREATED")
