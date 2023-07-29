@@ -225,11 +225,33 @@ async def websocket_endpoint(websocket: WebSocket):
         if len(history) > 10:
             history = history[-10:]
 
+from langchain.chat_models import ChatOpenAI
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
-@app.post("/create_links")
-async def create_links(roadmap: Roadmap):
-    res = search_links_lch(roadmap.roadmap)
-    return res
+@app.websocket("/links")
+async def strea_links(websocket: WebSocket):
+    await websocket.accept()
+    llm = ChatOpenAI(
+        model = "gpt-3.5-turbo" ,
+        openai_api_key = os.getenv("OPENAI_API_KEY"),
+        streaming=True,
+        callbacks=[StreamingStdOutCallbackHandler()] 
+    )
+    while True:
+        data = await websocket.receive_text()
+        print(data)
+        roadmap = f"""
+            Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
+            Roudmap:{data}
+            """
+
+        await websocket.send_text(llm.predict(roadmap))
+
+
+# @app.post("/create_links")
+# async def create_links(roadmap: Roadmap):
+#     res = search_links_lch(roadmap.roadmap)
+#     return res
 
 
 @app.post("/user/signup", tags=["user"])

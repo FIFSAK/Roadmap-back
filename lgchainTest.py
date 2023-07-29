@@ -1,34 +1,14 @@
-from langchain.agents import AgentType, initialize_agent, load_tools
-from langchain.llms import OpenAI
+# from langchain.agents import AgentType, initialize_agent, load_tools
+# from langchain.llms import OpenAI
+# from langchain.chat_models import ChatOpenAI
 import os
 import dotenv
-
-
+from langchain.chat_models import ChatOpenAI
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 dotenv.load_dotenv(dotenv.find_dotenv())
+import asyncio
 
-llm = OpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
-
-llm = OpenAI(temperature=0)
-
-# tools = load_tools(["serpapi", "llm-math"], llm=llm)
-
-# agent = initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True)
-
-
-def search_links_lch(response):
-    query = llm.predict(
-        f"""
-            Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
-            Roudmap:{response}
-            Answer: max_tokens=1000"""
-    )
-    # query = agent.run(response)
-    print("LINKS CREATED")
-    # print(query)
-    return query
-    
 a = """Roadmap for Backend Developer:
-
 1. Programming Languages:
    - Learn and master a server-side programming language such as Python, Java, or Node.js.
    - Understand the fundamentals of the chosen language, including data types, variables, control flow, and functions.
@@ -41,7 +21,6 @@ a = """Roadmap for Backend Developer:
 3. Web Development:
    - Learn HTML, CSS, and JavaScript to build user interfaces and understand how the frontend interacts with the backend.
    - Explore frontend frameworks like React or Angular to enhance your web development skills.
-
 4. API Development:
    - Understand the basics of RESTful APIs and how to design and build them.
    - Learn about authentication and authorization mechanisms like JWT or OAuth.
@@ -77,6 +56,82 @@ a = """Roadmap for Backend Developer:
     - Familiarize yourself with cloud platforms like AWS or Azure.
 
 Remember, this roadmap is just a starting point. Continuously update your skills, stay updated with new technologies, and work on real-world projects to gain hands-on experience. Good luck!"""
+
+
+llm = ChatOpenAI(
+   model = "gpt-3.5-turbo" ,
+   openai_api_key = os.getenv("OPENAI_API_KEY"),
+   streaming=True,
+   callbacks=[StreamingStdOutCallbackHandler()] 
+)
+
+def search_links_lch(response):
+    async def generate_links():
+        query = f"""
+            Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
+            Roudmap:{response}
+            """
+
+        for resp in llm.predict(query, stream=True):
+            yield resp
+    return generate_links()
+
+
+# llm.predict( f"""
+#             Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
+#             Roudmap:{a}
+#             """)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# llm = OpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
+
+# llm = OpenAI(temperature=0)
+# chat_model = ChatOpenAI()
+
+# # tools = load_tools(["serpapi", "llm-math"], llm=llm)
+
+# # agent = initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True)
+
+
+# def search_links_lch(response):
+#     query = llm.predict(
+#         f"""
+#             Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
+#             Roudmap:{response}
+#             Answer: max_tokens=1000"""
+#     )
+#     # query = agent.run(response)
+#     print("LINKS CREATED")
+#     # print(query)
+#     return query
+    
+
+
 # print(search_links_lch(a))
 # print(search_links_lch("in which team playing ronaldo"))
 
+# print(search_links_lch(a))
