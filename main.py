@@ -198,6 +198,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 from langchain.chat_models import ChatOpenAI
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.callbacks.streaming_aiter import AsyncIteratorCallbackHandler
 
 @app.websocket("/links")
 async def strea_links(websocket: WebSocket):
