@@ -28,7 +28,7 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from langchain.callbacks import AsyncIteratorCallbackHandler
 from langchain.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage
+from langchain.schema import HumanMessage, AIMessage, FunctionMessage
 from pydantic import BaseModel
 
 dotenv.load_dotenv(dotenv.find_dotenv())
@@ -191,7 +191,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
         report = []
         for resp in openai.ChatCompletion.create(
-            model="gpt-3.5-turbo", messages=history, temperature=0.5, stream=True
+            model="gpt-3.5-turbo", messages=history, temperature=0.5, stream=True,
         ):
             report.append(resp["choices"][0]["delta"].get("content", ""))
             result = "".join(report).strip()
@@ -240,64 +240,18 @@ async def stream_links(websocket: WebSocket):
 
         async for token in callback.aiter():
             # Use server-sent-events to stream the response
-            await websocket.send_text(f"{token} ")
+            await websocket.send_text(f"{token}")
 
         await task
     while True:
         data = await websocket.receive_text()
         print(data)
         roadmap = f"""
-            Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
+            Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics.
+            Instruction: don't comlete or continue roadmap which will provided even it's not finished. You role it's only find workers links links with free resources for learning. IMPORTANT CHECK THAT THE LINKS DO NOT REDIRECT TO A PAGE NOT FOUND
             Roudmap:{data}
             """
         await send_message(roadmap)
-
-
-# async def send_message(message: str) -> AsyncIterable[str]:
-#     callback = AsyncIteratorCallbackHandler()
-#     model = ChatOpenAI(
-#         streaming=True,
-#         openai_api_key=os.getenv("OPENAI_API_KEY"),
-#         verbose=True,
-#         callbacks=[callback],
-#     )
-
-#     async def wrap_done(fn: Awaitable, event: asyncio.Event):
-#         """Wrap an awaitable with a event to signal when it's done or an exception is raised."""
-#         try:
-#             await fn
-#         except Exception as e:
-#             # TODO: handle exception
-#             print(f"Caught exception: {e}")
-#         finally:
-#             # Signal the aiter to stop.
-#             event.set()
-
-#     # Begin a task that runs in the background.
-#     task = asyncio.create_task(
-#         wrap_done(
-#             model.agenerate(messages=[[HumanMessage(content=message)]]), callback.done
-#         ),
-#     )
-
-#     async for token in callback.aiter():
-#         # Use server-sent-events to stream the response
-#         yield f"{token} "
-
-#     await task
-
-
-# class StreamRequest(BaseModel):
-#     """Request body for streaming."""
-
-#     message: str
-
-
-# @app.post("/stream")
-# def stream(body: StreamRequest):
-#     prompt = f"""Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
-#            Roadmap:{body.message}"""
-#     return StreamingResponse(send_message(prompt), media_type="text/event-stream")
 
 @app.post("/user/signup", tags=["user"])
 def user_signup(user: UserLogintSchema = Body(default=None)):
