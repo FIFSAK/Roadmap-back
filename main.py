@@ -19,6 +19,18 @@ from auth.jwt_bearer import JWTBearer
 import re
 import datetime
 
+import asyncio
+import os
+from typing import AsyncIterable, Awaitable
+
+import uvicorn
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+from langchain.callbacks import AsyncIteratorCallbackHandler
+from langchain.chat_models import ChatOpenAI
+from langchain.schema import HumanMessage
+from pydantic import BaseModel
+
 dotenv.load_dotenv(dotenv.find_dotenv())
 
 
@@ -60,8 +72,6 @@ app.add_middleware(
 
 class Message(BaseModel):
     message: str
-
-
 
 
 class Email(BaseModel):
@@ -196,19 +206,43 @@ async def websocket_endpoint(websocket: WebSocket):
         if len(history) > 10:
             history = history[-10:]
 
+
 from langchain.chat_models import ChatOpenAI
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.callbacks.streaming_aiter import AsyncIteratorCallbackHandler
 
 @app.websocket("/links")
-async def strea_links(websocket: WebSocket):
+async def stream_links(websocket: WebSocket):
     await websocket.accept()
-    llm = ChatOpenAI(
-        model = "gpt-3.5-turbo" ,
-        openai_api_key = os.getenv("OPENAI_API_KEY"),
+    callback = AsyncIteratorCallbackHandler()
+    model = ChatOpenAI(
+        verbose=True,
+        openai_api_key=os.getenv("OPENAI_API_KEY"),
         streaming=True,
-        callbacks=[StreamingStdOutCallbackHandler()] 
+        callbacks=[callback],
     )
+    async def send_message(message: str) -> AsyncIterable[str]:
+        async def wrap_done(fn: Awaitable, event: asyncio.Event):
+            """Wrap an awaitable with a event to signal when it's done or an exception is raised."""
+            try:
+                await fn
+            except Exception as e:
+                # TODO: handle exception
+                print(f"Caught exception: {e}")
+            finally:
+                # Signal the aiter to stop.
+                event.set()
+        task = asyncio.create_task(
+            wrap_done(
+                model.agenerate(messages=[[HumanMessage(content=message)]]), callback.done
+            ),
+        )
+
+        async for token in callback.aiter():
+            # Use server-sent-events to stream the response
+            await websocket.send_text(f"{token} ")
+
+        await task
     while True:
         data = await websocket.receive_text()
         print(data)
@@ -216,10 +250,54 @@ async def strea_links(websocket: WebSocket):
             Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
             Roudmap:{data}
             """
+        await send_message(roadmap)
 
-        await websocket.send_text(llm.predict(roadmap))
+
+# async def send_message(message: str) -> AsyncIterable[str]:
+#     callback = AsyncIteratorCallbackHandler()
+#     model = ChatOpenAI(
+#         streaming=True,
+#         openai_api_key=os.getenv("OPENAI_API_KEY"),
+#         verbose=True,
+#         callbacks=[callback],
+#     )
+
+#     async def wrap_done(fn: Awaitable, event: asyncio.Event):
+#         """Wrap an awaitable with a event to signal when it's done or an exception is raised."""
+#         try:
+#             await fn
+#         except Exception as e:
+#             # TODO: handle exception
+#             print(f"Caught exception: {e}")
+#         finally:
+#             # Signal the aiter to stop.
+#             event.set()
+
+#     # Begin a task that runs in the background.
+#     task = asyncio.create_task(
+#         wrap_done(
+#             model.agenerate(messages=[[HumanMessage(content=message)]]), callback.done
+#         ),
+#     )
+
+#     async for token in callback.aiter():
+#         # Use server-sent-events to stream the response
+#         yield f"{token} "
+
+#     await task
 
 
+# class StreamRequest(BaseModel):
+#     """Request body for streaming."""
+
+#     message: str
+
+
+# @app.post("/stream")
+# def stream(body: StreamRequest):
+#     prompt = f"""Context: you will be provided with a roadmap based on it, provide links to resources where you can study the topics prescribed in the roadmap find for all topics and complete response
+#            Roadmap:{body.message}"""
+#     return StreamingResponse(send_message(prompt), media_type="text/event-stream")
 
 @app.post("/user/signup", tags=["user"])
 def user_signup(user: UserLogintSchema = Body(default=None)):
@@ -252,6 +330,10 @@ def user_login(user: UserLogintSchema = Body(default=None)):
         return signJWT(user.email)
     elif existing_user["password"] != user.password:
         return {"error": "Wrong password"}
+
+
+
+
 
 
 if __name__ == "__main__":
